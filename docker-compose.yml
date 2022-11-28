@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  template:
+    container_name: template
+    build:
+      context: .
+      dockerfile: .docker/app/Dockerfile
+    image: template
+    restart: always
+    env_file: .env
+    environment:
+        DB_HOST: docker.for.mac.host.internal
+        DEBUG: 0
+    ports:
+      - "8801:8000"

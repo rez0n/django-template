@@ -1,0 +1,123 @@
+name: DEV Build & Deploy
+
+on:
+  push:
+    branches: [ dev ]
+
+jobs:
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    steps:
+
+    # Pull Repository
+    - uses: actions/checkout@v3
+
+    # Create reponame list variable with repository owner and name
+    - uses: jungwinter/split@v2
+      id: reponame
+      with:
+        msg: ${{github.repository}}
+        separator: '/'
+
+    # Build app and nginx Docker images
+    - name: Build and Publish APP image
+      uses: elgohr/Publish-Docker-Github-Action@v4
+      with:
+        name: ${{ steps.reponame.outputs._0 }}/template_app
+        registry: ghcr.io
+        username: ${{ steps.reponame.outputs._0 }}
+        password: ${{ secrets.DOCKER_PAT }}
+        dockerfile: .docker/app/Dockerfile
+        tags: latest
+
+    - name: Build and Publish NGINX image
+      uses: elgohr/Publish-Docker-Github-Action@v4
+      env:
+        APP_IMAGE: ghcr.io/${{ steps.reponame.outputs._0 }}/template_app:latest
+      with:
+        name: ${{ steps.reponame.outputs._0 }}/template_nginx
+        registry: ghcr.io
+        username: ${{ steps.reponame.outputs._0 }}
+        password: ${{ secrets.DOCKER_PAT }}
+        dockerfile: .docker/nginx/Dockerfile
+        tags: latest
+        buildargs: APP_IMAGE
+
+  deploy:
+    name: Deploy Application
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v3
+
+    # Create reponame list variable with repository owner and name
+    - uses: jungwinter/split@v2
+      id: reponame
+      with:
+        msg: ${{github.repository}}
+        separator: '/'
+
+    # Run server side commands to pull and run newly built images
+    - name: Deploy APP image to the server
+      uses: appleboy/ssh-action@master
+      env:
+          GITHUB_USERNAME: ${{ steps.reponame.outputs._0 }}
+          DOCKER_PAT: ${{ secrets.DOCKER_PAT }}
+          SECRET_KEY: ${{ secrets.DEV_SECRET_KEY }}
+          DB_PASS: ${{ secrets.DEV_DB_PASS }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      with:
+        host: "1.2.3.4"
+        username: "username"
+        key: ${{ secrets.SSH_KEY }}
+        envs: GITHUB_USERNAME, DOCKER_PAT, SECRET_KEY, DB_PASS, SENTRY_DSN
+        script: |
+          docker network create net || true
+          docker login -u $GITHUB_USERNAME -p $DOCKER_PAT ghcr.io
+          docker pull ghcr.io/${{ steps.reponame.outputs._0 }}/template_app:latest
+          docker stop template_app || true
+          docker rm template_app || true
+          docker run --name template_app -d \
+          --restart always \
+          --net net \
+          -e DOMAIN="template.example.com" \
+          -e SECRET_KEY=${SECRET_KEY} \
+          -e DB_HOST="db.example.com" \
+          -e DB_NAME="template" \
+          -e DB_USER="template" \
+          -e DB_PASS=${DB_PASS} \
+          -e SENTRY_DSN=${SENTRY_DSN} \
+          -e SENTRY_ENV=dev \
+          ghcr.io/${{ steps.reponame.outputs._0 }}/template_app:latest
+
+    - name: Deploy NGINX image to the server
+      uses: appleboy/ssh-action@master
+      env:
+          GITHUB_USERNAME: ${{ steps.reponame.outputs._0 }}
+          DOCKER_PAT: ${{ secrets.DOCKER_PAT }}
+          DOMAIN: "template.example.com"
+      with:
+        host: "1.2.3.4"
+        username: "username"
+        key: ${{ secrets.SSH_KEY }}
+        envs: GITHUB_USERNAME, DOCKER_PAT, DOMAIN
+        script: |
+          docker network create net || true
+          docker login -u $GITHUB_USERNAME -p $DOCKER_PAT ghcr.io
+          docker pull ghcr.io/${{ steps.reponame.outputs._0 }}/template_nginx:latest
+          docker stop template_nginx || true
+          docker rm template_nginx || true
+          docker run --name template_nginx -d \
+          --restart always \
+          --net net \
+          -l traefik.enable=true \
+          -l traefik.http.services.template_https.loadbalancer.server.port=8000 \
+          -l 'traefik.http.routers.template_https.rule=Host("'${DOMAIN}'")' \
+          -l traefik.http.routers.template_https.entrypoints=https \
+          -l traefik.http.routers.template_https.tls=true \
+          -l traefik.http.routers.template_https.tls.certresolver=myresolver \
+          -l 'traefik.http.routers.template_http.rule=Host("'${DOMAIN}'")' \
+          -l traefik.http.routers.template_http.entrypoints=http \
+          ghcr.io/${{ steps.reponame.outputs._0 }}/template_nginx:latest
