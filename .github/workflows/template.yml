@@ -22,7 +22,7 @@ jobs:
 
     # Build app and nginx Docker images
     - name: Build and Publish APP image
-      uses: elgohr/Publish-Docker-Github-Action@v4
+      uses: elgohr/Publish-Docker-Github-Action@v5
       with:
         name: ${{ steps.reponame.outputs._0 }}/template_app
         registry: ghcr.io
@@ -32,7 +32,7 @@ jobs:
         tags: latest
 
     - name: Build and Publish NGINX image
-      uses: elgohr/Publish-Docker-Github-Action@v4
+      uses: elgohr/Publish-Docker-Github-Action@v5
       env:
         APP_IMAGE: ghcr.io/${{ steps.reponame.outputs._0 }}/template_app:latest
       with:
