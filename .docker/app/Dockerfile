@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 LABEL org.opencontainers.image.source="https://github.com/"
 
@@ -28,4 +28,4 @@ COPY .docker/app/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 EXPOSE 8000
 ENTRYPOINT [ "/entrypoint.sh" ]
-CMD ["gunicorn", "--bind", ":8000", "--graceful-timeout=900", "--timeout=900", "--workers", "3", "--error-logfile", "-", "--access-logfile", "-", "app.wsgi:application"]
+CMD ["gunicorn", "--bind", ":8000", "--graceful-timeout=900", "--timeout=900", "--workers", "4", "--error-logfile", "-", "--access-logfile", "-", "app.wsgi:application"]

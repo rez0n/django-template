@@ -1,0 +1,10 @@
+.docker
+.github
+.ipynb_checkpoints
+.idea
+.dockerignore
+docker-compose.yml
+LICENSE
+README.md
+.env*
+.gitignore

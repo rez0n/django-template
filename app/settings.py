@@ -35,6 +35,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -118,6 +120,11 @@ REDIS_HOST = config('REDIS_HOST', default=None)
 #         },
 #     }
 
+
+AUTH_USER_MODEL = "core.User"
+AUTHENTICATION_BACKENDS = [
+    'core.backends.ModelBackend',
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
