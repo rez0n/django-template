@@ -52,7 +52,7 @@ MIDDLEWARE = [
 SESSION_COOKIE_NAME = 'session'
 ROOT_URLCONF = 'app.urls'
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'app/static'),
 )
